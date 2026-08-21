@@ -14,6 +14,10 @@ on:
       # model_url is intentionally NOT hardcoded here - it comes from a repo Secret
       # (MODEL_DOWNLOAD_URL) so the model choice isn't visible in this file.
 
+concurrency:
+  group: telegram-bot-session
+  cancel-in-progress: false
+
 jobs:
   run-local-bot:
     runs-on: ubuntu-latest
