@@ -42,7 +42,7 @@ jobs:
       - name: Download model (if not cached)
         if: steps.cache-model.outputs.cache-hit != 'true'
         env:
-          MODEL_URL: ${{ secrets.AD }}
+          MODEL_URL: ${{ vars.AD }}
         run: |
           curl -L -o model.gguf "$MODEL_URL"
 
@@ -70,7 +70,7 @@ jobs:
 
       - name: Write .env (local model - NO Groq key needed)
         env:
-          LOCAL_MODEL_ID: ${{ secrets.LAD }}
+          LOCAL_MODEL_ID: ${{ vars.LAD }}
         run: |
           cat > .env << EOF
           # No GROQ_API_KEY - using local llama-server via lmstudio-compatible provider
@@ -81,7 +81,7 @@ jobs:
 
           MESSAGING_PLATFORM="telegram"
           TELEGRAM_BOT_TOKEN="${{ secrets.TH_TOKEN }}"
-          ALLOWED_TELEGRAM_USER_ID="${{ secrets.IK }}"
+          ALLOWED_TELEGRAM_USER_ID="${{ vars.IK }}"
 
           CLAUDE_WORKSPACE="./agent_workspace"
           ALLOWED_DIR="$(pwd)"
