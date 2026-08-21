@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   run-local-bot:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     timeout-minutes: 30
 
     steps:
