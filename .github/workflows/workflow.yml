@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: model.gguf
-          key: model-cache-qwen2.5-coder-7b-q4km
+          key: model-cache-qwen2.5-coder-1.5b-q4km
 
       - name: Download model (if not cached)
         if: steps.cache-model.outputs.cache-hit != 'true'
