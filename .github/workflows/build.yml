@@ -35,7 +35,7 @@ jobs:
       - name: Build KPM
         run: |
           cd kernel/kpm
-          make TARGET_COMPILE=aarch64-linux-gnu- KP_DIR=/tmp/KernelPatch-0.13.3/kernel
+          make -B TARGET_COMPILE=aarch64-linux-gnu- KP_DIR=/tmp/KernelPatch-0.13.3/kernel
           file xbox_memreader_4.14.186.kpm
           UNDEF=$(nm -u xbox_memreader_4.14.186.kpm | awk '{print $2}' | tr '\n' ' ')
           echo "undefined: $UNDEF"
