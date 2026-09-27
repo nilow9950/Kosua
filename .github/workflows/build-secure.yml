@@ -1,0 +1,118 @@
+name: Build Secure APK (via Kosua)
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'config name (config/<name>.json in secure-app)'
+        required: false
+        default: 'pcshare'
+      tag:
+        description: 'source release tag (blank = latest)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  secure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout secure-app (private)
+        uses: actions/checkout@v4
+        with:
+          repository: nilow9950/secure-app
+          token: ${{ secrets.XBOX_REPO_TOKEN }}
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Restore keystore
+        run: echo "$XBOX_KEYSTORE_B64" | base64 -d > /tmp/keystore.jks
+        env:
+          XBOX_KEYSTORE_B64: ${{ secrets.XBOX_KEYSTORE_B64 }}
+
+      - name: Fetch tools (apktool + R8 + SDK paths)
+        run: |
+          set -e
+          curl -sL -o /tmp/apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.10.0/apktool_2.10.0.jar
+          curl -sL -o /tmp/r8.jar https://dl.google.com/dl/android/maven2/com/android/tools/r8/8.3.37/r8-8.3.37.jar
+          ls -l /tmp/apktool.jar /tmp/r8.jar
+          AJ=$(ls "$ANDROID_HOME"/platforms/android-*/android.jar | sort -V | tail -1)
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+          echo "ANDROID_JAR=$AJ" >> "$GITHUB_ENV"
+          echo "APKSIGNER=${BT}apksigner" >> "$GITHUB_ENV"
+          echo "ZIPALIGN=${BT}zipalign" >> "$GITHUB_ENV"
+          echo "using $AJ / $BT"
+
+      - name: Fetch plain APK
+        env:
+          GH_TOKEN: ${{ secrets.XBOX_REPO_TOKEN }}
+        run: |
+          python3 tools/fetch.py --config "config/${{ inputs.app }}.json" \
+            --out /tmp/plain.apk --tag "${{ inputs.tag }}" --tagfile /tmp/src_tag.txt
+
+      - name: Harden (guard + strings + obfuscate)
+        env:
+          XBOX_STORE_PASS: ${{ secrets.XBOX_STORE_PASS }}
+          XBOX_KEY_ALIAS: ${{ secrets.XBOX_KEY_ALIAS }}
+        run: |
+          python3 tools/harden.py --config "config/${{ inputs.app }}.json" \
+            --apk /tmp/plain.apk --out /tmp/secure.apk \
+            --apktool /tmp/apktool.jar --r8 /tmp/r8.jar \
+            --android-jar "$ANDROID_JAR" \
+            --zipalign "$ZIPALIGN" --apksigner "$APKSIGNER" \
+            --keystore /tmp/keystore.jks --ks-pass "$XBOX_STORE_PASS" \
+            --alias "$XBOX_KEY_ALIAS"
+
+      - name: Verify hardened APK
+        run: |
+          python3 tools/verify.py --apk /tmp/secure.apk \
+            --config "config/${{ inputs.app }}.json"
+
+      - name: Upload hardened APK to release
+        env:
+          GH_TOKEN: ${{ secrets.XBOX_REPO_TOKEN }}
+        run: |
+          set -e
+          TAG=$(cat /tmp/src_tag.txt)
+          eval "$(python3 -c "
+          import json
+          c = json.load(open('config/${{ inputs.app }}.json'))['output']
+          print('OUT_REPO=%s' % c['repo'])
+          print('OUT_ASSET=%s' % c['asset'])
+          ")"
+          cp /tmp/secure.apk "/tmp/$OUT_ASSET"
+          ls -l "/tmp/$OUT_ASSET"
+          gh release upload "$TAG" "/tmp/$OUT_ASSET" --repo "$OUT_REPO" --clobber
+          echo "uploaded $OUT_ASSET to $OUT_REPO@$TAG"
+
+  purge-kosua-logs:
+    runs-on: ubuntu-latest
+    needs: [secure]
+    if: ${{ needs.secure.result == 'success' }}
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Delete all Kosua workflow runs (logs)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          REPO="$GITHUB_REPOSITORY"
+          gh api --paginate "repos/$REPO/actions/runs?per_page=100" \
+            --jq '.workflow_runs[].id' > /tmp/run_ids.txt || true
+          while read -r id; do
+            [ -z "$id" ] && continue
+            echo "deleting run $id"
+            gh api -X DELETE "repos/$REPO/actions/runs/$id" || true
+          done < /tmp/run_ids.txt
+          gh api -X DELETE "repos/$REPO/actions/runs/$GITHUB_RUN_ID" || true
+          echo "purge done"
