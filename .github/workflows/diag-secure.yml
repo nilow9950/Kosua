@@ -34,6 +34,7 @@ jobs:
           mv apks/PC-Share-secure.apk apks/secure.apk
           gh release download "$TAG" --repo nilow9950/pc-share --pattern 'PC-Share.apk' --dir apks </dev/null
           ls -l apks
+          sha256sum apks/secure.apk apks/PC-Share.apk
       - name: Install + launch + capture
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -57,6 +58,7 @@ jobs:
             adb uninstall com.nextec.pcshare || true
             sleep 2
             echo "======== TEST: SECURE APK ========"
+            sha256sum apks/secure.apk
             adb install -r apks/secure.apk
             sleep 2
             adb logcat -c || true
@@ -70,6 +72,10 @@ jobs:
             adb logcat -d | grep -E "FATAL|secureapp|AssertionError|NoClassDefFound|VerifyError|NoSuchMethod" | tail -n 120 || true
             echo "======== our crash file (if any) ========"
             adb shell cat /sdcard/PCShare/sa_crash.txt 2>/dev/null || true
+            echo "======== ART/dexopt diagnostics ========"
+            adb logcat -d | grep -iE "dex2oat|installd|dexopt|vdex|checksum|corrupt|not a valid dex" | tail -n 80 || true
+            adb shell 'dumpsys package com.nextec.pcshare | grep -iA3 dexopt' || true
             adb root >/dev/null 2>&1 || true
             sleep 2
             adb shell 'ls -la /data/data/com.nextec.pcshare/ 2>/dev/null; cat /data/data/com.nextec.pcshare/shared_prefs/sa_integ.xml 2>/dev/null' || true
+            adb shell 'ls -la /data/app/*/com.nextec.pcshare*/ 2>/dev/null; ls -la /data/app/*/com.nextec.pcshare*/oat/*/ 2>/dev/null' || true
