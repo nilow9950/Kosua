@@ -38,17 +38,21 @@ jobs:
         env:
           XBOX_KEYSTORE_B64: ${{ secrets.XBOX_KEYSTORE_B64 }}
 
-      - name: Fetch tools (apktool + R8 + SDK paths)
+      - name: Fetch tools (apktool + R8 + dex2jar + SDK paths)
         run: |
           set -e
           curl -sL -o /tmp/apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.10.0/apktool_2.10.0.jar
           curl -sL -o /tmp/r8.jar https://dl.google.com/dl/android/maven2/com/android/tools/r8/8.3.37/r8-8.3.37.jar
-          ls -l /tmp/apktool.jar /tmp/r8.jar
+          curl -sL -o /tmp/dex-tools.zip https://github.com/pxb1988/dex2jar/releases/download/v2.4/dex-tools-v2.4.zip
+          unzip -q /tmp/dex-tools.zip -d /tmp/d2j
+          chmod +x /tmp/d2j/dex-tools-v2.4/d2j-dex2jar.sh
+          ls -l /tmp/apktool.jar /tmp/r8.jar /tmp/d2j/dex-tools-v2.4/d2j-dex2jar.sh
           AJ=$(ls "$ANDROID_HOME"/platforms/android-*/android.jar | sort -V | tail -1)
           BT=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
           echo "ANDROID_JAR=$AJ" >> "$GITHUB_ENV"
           echo "APKSIGNER=${BT}apksigner" >> "$GITHUB_ENV"
           echo "ZIPALIGN=${BT}zipalign" >> "$GITHUB_ENV"
+          echo "DEX2JAR=/tmp/d2j/dex-tools-v2.4/d2j-dex2jar.sh" >> "$GITHUB_ENV"
           echo "using $AJ / $BT"
 
       - name: Fetch plain APK
@@ -65,7 +69,7 @@ jobs:
         run: |
           python3 tools/harden.py --config "config/${{ inputs.app }}.json" \
             --apk /tmp/plain.apk --out /tmp/secure.apk \
-            --apktool /tmp/apktool.jar --r8 /tmp/r8.jar \
+            --apktool /tmp/apktool.jar --r8 /tmp/r8.jar --dex2jar "$DEX2JAR" \
             --android-jar "$ANDROID_JAR" \
             --zipalign "$ZIPALIGN" --apksigner "$APKSIGNER" \
             --keystore /tmp/keystore.jks --ks-pass "$XBOX_STORE_PASS" \
