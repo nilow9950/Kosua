@@ -55,6 +55,10 @@ jobs:
             adb shell pidof com.nextec.pcshare && echo "PLAIN_OK" || echo "PLAIN_DEAD"
             adb logcat -d -s AndroidRuntime:E > plain_crash.txt || true
             echo "--- plain crash:"; cat plain_crash.txt || true
+            adb shell uiautomator dump /sdcard/plain_ui.xml >/dev/null 2>&1 || true
+            adb pull /sdcard/plain_ui.xml plain_ui.xml >/dev/null 2>&1 || true
+            grep -q "Connection guide" plain_ui.xml && echo "GUIDE_PLAIN_OK" || echo "GUIDE_PLAIN_MISSING"
+            grep -q "Got it" plain_ui.xml && echo "GUIDE_PLAIN_BTN_OK" || echo "GUIDE_PLAIN_BTN_MISSING"
             adb uninstall com.nextec.pcshare || true
             sleep 2
             echo "======== TEST: SECURE APK ========"
@@ -65,6 +69,14 @@ jobs:
             adb shell monkey -p com.nextec.pcshare -c android.intent.category.LAUNCHER 1 || true
             sleep 14
             adb shell pidof com.nextec.pcshare && echo "SECURE_OK" || echo "SECURE_DEAD"
+            adb shell uiautomator dump /sdcard/secure_ui.xml >/dev/null 2>&1 || true
+            adb pull /sdcard/secure_ui.xml secure_ui.xml >/dev/null 2>&1 || true
+            grep -q "Connection guide" secure_ui.xml && echo "GUIDE_SECURE_OK" || echo "GUIDE_SECURE_MISSING"
+            grep -q "Got it" secure_ui.xml && echo "GUIDE_SECURE_BTN_OK" || echo "GUIDE_SECURE_BTN_MISSING"
+            echo "======== secure prefs (guide flag should be ABSENT on fresh data) ========"
+            adb root >/dev/null 2>&1 || true
+            sleep 2
+            adb shell 'ls /data/data/com.nextec.pcshare/shared_prefs/ 2>/dev/null; cat /data/data/com.nextec.pcshare/shared_prefs/*.xml 2>/dev/null | grep -i "guide\|shown"' || true
             echo "======== secure crash (AndroidRuntime:E) ========"
             adb logcat -d -s AndroidRuntime:E > secure_crash.txt || true
             cat secure_crash.txt || true
