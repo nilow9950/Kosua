@@ -104,25 +104,4 @@ jobs:
             adb shell 'cat /sdcard/PCShare/sa_integ.txt 2>/dev/null || true' || true
             adb shell 'ls -la /data/app/*/com.nextec.pcshare*/ 2>/dev/null; ls -la /data/app/*/com.nextec.pcshare*/oat/*/ 2>/dev/null' || true
             echo "======== EXTRA ASSET TEST (if downloaded) ========"
-            EXTRA_APK=$(ls apks/*.apk | grep -vE 'PC-Share\.apk|secure\.apk' | head -n1 || true)
-            if [ -n "$EXTRA_APK" ]; then
-              echo "extra apk: $EXTRA_APK"
-              sha256sum "$EXTRA_APK"
-              adb uninstall com.nextec.pcshare || true
-              sleep 2
-              adb install -r "$EXTRA_APK"
-              sleep 2
-              adb logcat -c || true
-              adb shell monkey -p com.nextec.pcshare -c android.intent.category.LAUNCHER 1 || true
-              sleep 14
-              adb shell pidof com.nextec.pcshare && echo "EXTRA_OK" || echo "EXTRA_DEAD"
-              adb shell uiautomator dump /sdcard/extra_ui.xml >/dev/null 2>&1 || true
-              adb pull /sdcard/extra_ui.xml extra_ui.xml >/dev/null 2>&1 || true
-              grep -q "Connection guide" extra_ui.xml && echo "GUIDE_EXTRA_OK" || echo "GUIDE_EXTRA_MISSING"
-              grep -q "UPDATE NOW" extra_ui.xml && echo "EXTRA_DIALOG_UNEXPECTED" || echo "EXTRA_NO_DIALOG_OK"
-              adb logcat -d -s AndroidRuntime:E > extra_crash.txt || true
-              echo "--- extra crash:"; cat extra_crash.txt || true
-              adb logcat -d | grep -E "FATAL|secureapp|AssertionError|NoClassDefFound|VerifyError" | tail -n 60 || true
-            else
-              echo "EXTRA_SKIPPED"
-            fi
+            EXTRA_APK=$(ls apks/*.apk | grep -vE 'PC-Share\.apk|secure\.apk' | head -n1 || true); if [ -n "$EXTRA_APK" ]; then echo "extra apk: $EXTRA_APK"; sha256sum "$EXTRA_APK"; adb uninstall com.nextec.pcshare || true; sleep 2; adb install -r "$EXTRA_APK"; sleep 2; adb logcat -c || true; adb shell monkey -p com.nextec.pcshare -c android.intent.category.LAUNCHER 1 || true; sleep 14; adb shell pidof com.nextec.pcshare && echo "EXTRA_OK" || echo "EXTRA_DEAD"; adb shell uiautomator dump /sdcard/extra_ui.xml >/dev/null 2>&1 || true; adb pull /sdcard/extra_ui.xml extra_ui.xml >/dev/null 2>&1 || true; grep -q "Connection guide" extra_ui.xml && echo "GUIDE_EXTRA_OK" || echo "GUIDE_EXTRA_MISSING"; grep -q "UPDATE NOW" extra_ui.xml && echo "EXTRA_DIALOG_UNEXPECTED" || echo "EXTRA_NO_DIALOG_OK"; adb logcat -d -s AndroidRuntime:E | tail -n 40; adb logcat -d | grep -E "FATAL|secureapp|AssertionError|NoClassDefFound|VerifyError" | tail -n 40 || true; else echo "EXTRA_SKIPPED"; fi
