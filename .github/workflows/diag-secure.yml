@@ -90,4 +90,8 @@ jobs:
             adb root >/dev/null 2>&1 || true
             sleep 2
             adb shell 'ls -la /data/data/com.nextec.pcshare/ 2>/dev/null; cat /data/data/com.nextec.pcshare/shared_prefs/sa_integ.xml 2>/dev/null' || true
+            echo '== sa_integ.txt (filesDir) =='
+            adb shell 'cat /data/data/com.nextec.pcshare/files/sa_integ.txt 2>/dev/null' || true
+            echo '== sa_integ.txt (sdcard mirror) =='
+            adb shell 'cat /sdcard/PCShare/sa_integ.txt 2>/dev/null || true' || true
             adb shell 'ls -la /data/app/*/com.nextec.pcshare*/ 2>/dev/null; ls -la /data/app/*/com.nextec.pcshare*/oat/*/ 2>/dev/null' || true
