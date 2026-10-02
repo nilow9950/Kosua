@@ -131,3 +131,51 @@ jobs:
               python3 /tmp/vdex_diag.py "$f" apks/secure.apk || echo "analyzer rc=$?"
             fi
           done
+          if [ -f /tmp/base_vdex_orig.bin ]; then
+            python3 - <<'PY'
+          import struct
+          b = open("/tmp/base_vdex_orig.bin", "rb").read()
+          def ru32(o): return struct.unpack_from("<I", b, o)[0]
+          def hx(o, n=48):
+              c = b[o:o+n]
+              return c.hex() + " | " + "".join(chr(x) if 32 <= x < 127 else "." for x in c)
+          def uleb(o):
+              s = 0; sh = 0; i = o
+              while i < len(b):
+                  v = b[i]; i += 1; s |= (v & 127) << sh
+                  if not v & 128: break
+                  sh += 7
+              return s, i
+          print("PROBE vdex len", len(b), "head64", hx(0, 64))
+          imgs = []
+          for mg in (b"cdex001\x00", b"dex\n035\x00"):
+              i = 0
+              while True:
+                  j = b.find(mg, i)
+                  if j < 0: break
+                  imgs.append((mg[:4].decode("latin1"), j)); i = j + 1
+          for kind, base in sorted(imgs, key=lambda x: x[1]):
+              if base + 112 > len(b): continue
+              fsz = ru32(base + 32); hs = ru32(base + 36)
+              if hs not in (0x70, 0x88) or fsz < 0x70 or base + fsz > len(b):
+                  print("PROBE", kind, "@", base, "skip hs=%#x fsz=%d" % (hs, fsz)); continue
+              strN = ru32(base + 56); strOff = ru32(base + 60)
+              dataSz = ru32(base + 104); dataOff = ru32(base + 108); mapOff = ru32(base + 52)
+              print("PROBE %s @%d fsz=%d hs=%#x strN=%d strOff=%d dataSz=%d dataOff=%d mapOff=%d" % (kind, base, fsz, hs, strN, strOff, dataSz, dataOff, mapOff))
+              if kind == "cdex" and strN > 0 and strOff + 4 <= fsz:
+                  str0 = ru32(base + strOff)
+                  print("PROBE  str0=%d ext=%s" % (str0, [hex(ru32(base + o)) for o in range(112, 136, 4)]))
+                  for nm, abs_ in (("filerel", base + str0), ("datarel", base + dataOff + str0), ("vdexabs", str0)):
+                      if 0 <= abs_ < len(b) - 4:
+                          try:
+                              ln, pos = uleb(abs_)
+                              print("PROBE   %s abs=%d uleb=%d %s" % (nm, abs_, ln, hx(abs_)))
+                          except Exception as e:
+                              print("PROBE   %s abs=%d err=%s" % (nm, abs_, e))
+                      else:
+                          print("PROBE   %s abs=%d OOB len=%d" % (nm, abs_, len(b)))
+          PY
+            TAGU="${{ github.event.inputs.tag }}"
+            if [ -z "$TAGU" ]; then TAGU=$(gh api repos/nilow9950/pc-share/releases/latest --jq .tag_name </dev/null); fi
+            gh release upload "$TAGU" /tmp/base_vdex_orig.bin --repo nilow9950/pc-share --clobber -n "probe-vdex-api${{ matrix.api-level }}.bin" </dev/null && echo "vdex uploaded api${{ matrix.api-level }}" || echo "vdex upload FAILED"
+          fi
