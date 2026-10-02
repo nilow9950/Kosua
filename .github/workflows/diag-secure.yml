@@ -177,5 +177,6 @@ jobs:
           PY
             TAGU="${{ github.event.inputs.tag }}"
             if [ -z "$TAGU" ]; then TAGU=$(gh api repos/nilow9950/pc-share/releases/latest --jq .tag_name </dev/null); fi
-            gh release upload "$TAGU" /tmp/base_vdex_orig.bin --repo nilow9950/pc-share --clobber -n "probe-vdex-api${{ matrix.api-level }}.bin" </dev/null && echo "vdex uploaded api${{ matrix.api-level }}" || echo "vdex upload FAILED"
+            cp /tmp/base_vdex_orig.bin "/tmp/probe-vdex-api${{ matrix.api-level }}.bin" || echo "cp FAILED rc=$?"
+            gh release upload "$TAGU" "/tmp/probe-vdex-api${{ matrix.api-level }}.bin" --repo nilow9950/pc-share --clobber </dev/null && echo "vdex uploaded api${{ matrix.api-level }}" || echo "vdex upload FAILED rc=$?"
           fi
