@@ -45,6 +45,7 @@ jobs:
             adb shell uiautomator dump /sdcard/s0.xml >/dev/null 2>&1; adb shell cat /sdcard/s0.xml > /tmp/s0.xml; echo "--- first screen:"; grep -o 'text="[^"]*"' /tmp/s0.xml | head -25
             /tmp/tap.sh 'text="Got it"|text="GOT IT"|resource-id="com.nextec.pcshare:id/tipsDone"'; sleep 3
             adb shell uiautomator dump /sdcard/s0b.xml >/dev/null 2>&1; adb shell cat /sdcard/s0b.xml > /tmp/s0b.xml; echo "--- after guide dismiss:"; grep -o 'text="[^"]*"' /tmp/s0b.xml | head -25
+            for i in 1 2 3 4 5; do adb shell uiautomator dump /sdcard/p.xml >/dev/null 2>&1; adb shell cat /sdcard/p.xml > /tmp/p.xml; if grep -qi "location" /tmp/p.xml; then echo "LOC_AT_OPEN_OK"; break; elif grep -qi "notification" /tmp/p.xml; then echo "NOTIF_AT_OPEN_FIRST"; /tmp/tap.sh 'text="Deny"|text="DENY"' >/dev/null; sleep 2; else sleep 2; fi; done; if grep -qi "location" /tmp/p.xml; then echo "--- first-open location dialog:"; grep -o 'text="[^"]*"' /tmp/p.xml | head -20; /tmp/tap.sh 'text="Deny"|text="DENY"' >/dev/null; sleep 2; else echo "LOC_AT_OPEN_MISSING"; fi
             /tmp/tap.sh 'resource-id="com.nextec.pcshare:id/powerBtn"'; sleep 3
             adb shell uiautomator dump /sdcard/s1.xml >/dev/null 2>&1; adb shell cat /sdcard/s1.xml > /tmp/s1.xml; echo "--- after 1st START:"; grep -o 'text="[^"]*"' /tmp/s1.xml | head -25
             grep -qi "Storage access needed" /tmp/s1.xml && echo "STORAGE_DIALOG_OK" || echo "STORAGE_DIALOG_MISSING"
@@ -55,6 +56,11 @@ jobs:
             grep -qi "location" /tmp/s2.xml && echo "LOC_DIALOG_OK" || echo "LOC_DIALOG_MISSING"
             grep -qi "notification" /tmp/s2.xml && echo "NOTIF_DIALOG_PRESENT" || echo "NOTIF_DIALOG_ABSENT"
             grep -qi "notification" /tmp/s2.xml && { /tmp/tap.sh 'text="Allow"|text="ALLOW"'; sleep 3; adb shell uiautomator dump /sdcard/s3.xml >/dev/null 2>&1; adb shell cat /sdcard/s3.xml > /tmp/s3.xml; echo "--- after notif answer:"; grep -o 'text="[^"]*"' /tmp/s3.xml | head -30; grep -qi "location" /tmp/s3.xml && echo "LOC_DIALOG_OK_AFTER_NOTIF" || echo "LOC_DIALOG_MISSING_AFTER_NOTIF"; } || true
+            adb shell pm set-permission-flags com.nextec.pcshare android.permission.ACCESS_FINE_LOCATION user-set user-fixed || true
+            adb shell am force-stop com.nextec.pcshare; sleep 2; adb shell monkey -p com.nextec.pcshare -c android.intent.category.LAUNCHER 1 || true; sleep 12
+            adb shell uiautomator dump /sdcard/s4.xml >/dev/null 2>&1; adb shell cat /sdcard/s4.xml > /tmp/s4.xml; echo "--- after permission-blocked relaunch:"; grep -o 'text="[^"]*"' /tmp/s4.xml | head -25
+            grep -qi "Location access blocked" /tmp/s4.xml && echo "SETTINGS_FALLBACK_OK" || echo "SETTINGS_FALLBACK_MISSING"
+            adb shell pm clear-permission-flags com.nextec.pcshare android.permission.ACCESS_FINE_LOCATION user-set user-fixed || true
             echo "--- location perm state:"; adb shell dumpsys package com.nextec.pcshare | grep -i "ACCESS_FINE_LOCATION" | head -5 || true
             echo "--- crash:"; adb logcat -d -s AndroidRuntime:E | tail -10 || true
             echo "PERMTEST_DONE"
