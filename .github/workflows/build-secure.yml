@@ -144,6 +144,11 @@ jobs:
           ls -l "/tmp/$OUT_ASSET"
           gh release upload "$TAG" "/tmp/$OUT_ASSET" --repo "$OUT_REPO" --clobber
           echo "uploaded $OUT_ASSET to $OUT_REPO@$TAG"
+          if [ -f /tmp/secure.apk.mapping.txt ]; then
+            cp /tmp/secure.apk.mapping.txt "/tmp/$OUT_ASSET.mapping.txt"
+            gh release upload "$TAG" "/tmp/$OUT_ASSET.mapping.txt" --repo "$OUT_REPO" --clobber
+            echo "uploaded $OUT_ASSET.mapping.txt (R8 deobfuscation map for Play Console)"
+          fi
 
   purge-kosua-logs:
     runs-on: ubuntu-latest
