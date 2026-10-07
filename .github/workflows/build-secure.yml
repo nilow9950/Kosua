@@ -83,27 +83,50 @@ jobs:
           python3 tools/fetch.py --config "config/${{ inputs.app }}.json" \
             --out /tmp/plain.apk --tag "${{ inputs.tag }}" --tagfile /tmp/src_tag.txt
 
+      - name: Fetch plain bundle (AAB configs only)
+        env:
+          GH_TOKEN: ${{ secrets.XBOX_REPO_TOKEN }}
+        run: |
+          set -e
+          eval "$(python3 -c "
+          import json
+          c = json.load(open('config/${{ inputs.app }}.json'))
+          print('OUT_AAB=%s' % ('1' if c['output']['asset'].endswith('.aab') else '0'))
+          print('AAB_ASSET=%s' % c['input'].get('aab_asset', ''))
+          ")"
+          if [ "$OUT_AAB" != "1" ]; then echo "apk output - skip bundle fetch"; exit 0; fi
+          [ -n "$AAB_ASSET" ] || { echo "input.aab_asset missing in config"; exit 1; }
+          # same tag as the apk -> plain apk + plain bundle from ONE release
+          python3 tools/fetch.py --config "config/${{ inputs.app }}.json" \
+            --out /tmp/plain.aab --tag "$(cat /tmp/src_tag.txt)" --asset "$AAB_ASSET"
+
       - name: Harden (guard + strings + obfuscate)
         env:
           XBOX_STORE_PASS: ${{ secrets.XBOX_STORE_PASS }}
           XBOX_KEY_ALIAS: ${{ secrets.XBOX_KEY_ALIAS }}
         run: |
+          EXTRA=""
+          if [ -f /tmp/plain.aab ]; then EXTRA="--aab /tmp/plain.aab --out-aab /tmp/play.aab"; fi
           python3 tools/harden.py --config "config/${{ inputs.app }}.json" \
             --apk /tmp/plain.apk --out /tmp/secure.apk \
             --apktool /tmp/apktool.jar --r8 /tmp/r8.jar --dex2jar "$DEX2JAR" \
             --android-jar "$ANDROID_JAR" \
             --zipalign "$ZIPALIGN" --apksigner "$APKSIGNER" \
             --keystore /tmp/keystore.jks --ks-pass "$XBOX_STORE_PASS" \
-            --alias "$XBOX_KEY_ALIAS"
+            --alias "$XBOX_KEY_ALIAS" $EXTRA
 
-      - name: Verify hardened APK
+      - name: Verify hardened APK (+ bundle when built)
         run: |
           ARGS=""
           if [ -f /tmp/secure.apk.pkkey ]; then ARGS="--pk-key-file /tmp/secure.apk.pkkey"; fi
           python3 tools/verify.py --apk /tmp/secure.apk \
             --config "config/${{ inputs.app }}.json" $ARGS
+          if [ -f /tmp/play.aab ]; then
+            python3 tools/verify.py --apk /tmp/play.aab \
+              --config "config/${{ inputs.app }}.json"
+          fi
 
-      - name: Upload hardened APK to release
+      - name: Upload hardened output to release
         env:
           GH_TOKEN: ${{ secrets.XBOX_REPO_TOKEN }}
         run: |
@@ -115,7 +138,9 @@ jobs:
           print('OUT_REPO=%s' % c['repo'])
           print('OUT_ASSET=%s' % c['asset'])
           ")"
-          cp /tmp/secure.apk "/tmp/$OUT_ASSET"
+          if [ "${OUT_ASSET##*.}" = "aab" ]; then SRC=/tmp/play.aab; else SRC=/tmp/secure.apk; fi
+          [ -f "$SRC" ] || { echo "expected output missing: $SRC"; exit 1; }
+          cp "$SRC" "/tmp/$OUT_ASSET"
           ls -l "/tmp/$OUT_ASSET"
           gh release upload "$TAG" "/tmp/$OUT_ASSET" --repo "$OUT_REPO" --clobber
           echo "uploaded $OUT_ASSET to $OUT_REPO@$TAG"
