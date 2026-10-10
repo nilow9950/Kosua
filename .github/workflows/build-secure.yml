@@ -104,6 +104,7 @@ jobs:
         env:
           XBOX_STORE_PASS: ${{ secrets.XBOX_STORE_PASS }}
           XBOX_KEY_ALIAS: ${{ secrets.XBOX_KEY_ALIAS }}
+          LOG_KEY: ${{ secrets.PCSHARE_LOG_KEY }}
         run: |
           EXTRA=""
           if [ -f /tmp/plain.aab ]; then EXTRA="--aab /tmp/plain.aab --out-aab /tmp/play.aab"; fi
