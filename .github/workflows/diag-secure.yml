@@ -54,7 +54,7 @@ jobs:
           python3 -c "import cryptography" >/dev/null 2>&1 && echo "cryptography OK" || { echo "cryptography MISSING"; exit 1; }
           curl -fsSL -H "Authorization: token $GH_TOKEN" \
             https://raw.githubusercontent.com/nilow9950/secure-app/main/tools/decrypt_log.py \
-            -o /tmp/sa_dec.py && echo "decrypt helper fetched" || echo "decrypt helper fetch FAILED"
+            -o /tmp/sa_dec.py && echo "decrypt helper fetched" || { echo "decrypt helper fetch FAILED"; exit 1; }
           cat > /tmp/gs.sh <<'EOF'
           #!/bin/sh
           # gs.sh <integ|crash|/path> <cmd...>
