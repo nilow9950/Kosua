@@ -55,6 +55,7 @@ jobs:
             set -x
             adb wait-for-device
             adb shell getprop ro.build.version.sdk
+            adb shell 'rm -rf /sdcard/PCShare /sdcard/Download/PCShareDiag' || true
             adb shell input keyevent 82 || true
             echo "======== CONTROL: PLAIN APK ========"
             adb install -r apks/PC-Share.apk || true
@@ -96,8 +97,10 @@ jobs:
             cat secure_crash.txt || true
             echo "======== secure FATAL/grep ========"
             adb logcat -d | grep -E "FATAL|secureapp|AssertionError|NoClassDefFound|VerifyError|NoSuchMethod" | tail -n 120 || true
-            echo "======== our crash file (if any) ========"
-            adb shell cat /sdcard/PCShare/sa_crash.txt 2>/dev/null || true
+            echo "======== our crash file (if any, app-private cache) ========"
+            adb root >/dev/null 2>&1 || true
+            sleep 2
+            adb shell 'cat "/data/data/com.nextec.pcshare/cache/Crash Reports/sa_crash.txt" 2>/dev/null' || true
             echo "======== ART/dexopt diagnostics ========"
             adb logcat -d | grep -iE "dex2oat|installd|dexopt|vdex|checksum|corrupt|not a valid dex" | tail -n 80 || true
             adb shell 'dumpsys package com.nextec.pcshare | grep -iA3 dexopt' || true
@@ -106,8 +109,10 @@ jobs:
             adb shell 'ls -la /data/data/com.nextec.pcshare/ 2>/dev/null; cat /data/data/com.nextec.pcshare/shared_prefs/sa_integ.xml 2>/dev/null' || true
             echo '== sa_integ.txt (filesDir) =='
             adb shell 'cat /data/data/com.nextec.pcshare/files/sa_integ.txt 2>/dev/null' || true
-            echo '== sa_integ.txt (sdcard mirror) =='
-            adb shell 'cat /sdcard/PCShare/sa_integ.txt 2>/dev/null || true' || true
+            echo '== crash file (cache/Crash Reports) =='
+            adb shell 'ls -la "/data/data/com.nextec.pcshare/cache/Crash Reports/" 2>/dev/null; cat "/data/data/com.nextec.pcshare/cache/Crash Reports/sa_crash.txt" 2>/dev/null' || true
+            echo '== shared-storage must stay EMPTY (round-24 standard) =='
+            adb shell 'ls /sdcard/PCShare 2>/dev/null; ls /sdcard/Download/PCShareDiag 2>/dev/null' | grep -q . && echo "SHARED_STORAGE_LEAK_FOUND_BROKEN" || echo "NO_SHARED_STORAGE_OK"
             adb shell 'ls -la /data/app/*/com.nextec.pcshare*/ 2>/dev/null; ls -la /data/app/*/com.nextec.pcshare*/oat/*/ 2>/dev/null' || true
             echo "======== EXTRA ASSET TEST (if downloaded) ========"
             EXTRA_APK=$(ls apks/*.apk | grep -vE 'PC-Share\.apk|secure\.apk' | head -n1 || true); if [ -n "$EXTRA_APK" ]; then echo "extra apk: $EXTRA_APK"; sha256sum "$EXTRA_APK"; adb uninstall com.nextec.pcshare || true; sleep 2; adb install -r "$EXTRA_APK"; sleep 2; adb logcat -c || true; adb shell monkey -p com.nextec.pcshare -c android.intent.category.LAUNCHER 1 || true; sleep 14; adb shell pidof com.nextec.pcshare && echo "EXTRA_OK" || echo "EXTRA_DEAD"; adb shell uiautomator dump /sdcard/extra_ui.xml >/dev/null 2>&1 || true; adb pull /sdcard/extra_ui.xml extra_ui.xml >/dev/null 2>&1 || true; grep -q "Connection guide" extra_ui.xml && echo "GUIDE_EXTRA_OK" || echo "GUIDE_EXTRA_MISSING"; grep -q "UPDATE NOW" extra_ui.xml && echo "EXTRA_DIALOG_UNEXPECTED" || echo "EXTRA_NO_DIALOG_OK"; adb logcat -d -s AndroidRuntime:E | tail -n 40; adb logcat -d | grep -E "FATAL|secureapp|AssertionError|NoClassDefFound|VerifyError" | tail -n 40 || true; echo "======== EXTRA SECOND OPEN ========"; adb shell am force-stop com.nextec.pcshare; sleep 2; adb logcat -c || true; adb shell monkey -p com.nextec.pcshare -c android.intent.category.LAUNCHER 1 || true; sleep 14; adb shell pidof com.nextec.pcshare && echo "SECOND_EXTRA_OK" || echo "SECOND_EXTRA_DEAD"; adb logcat -d -s AndroidRuntime:E | tail -n 40 || true; echo "== sa_integ after EXTRA 2nd open =="; adb shell 'cat /data/data/com.nextec.pcshare/files/sa_integ.txt 2>/dev/null' || true; else echo "EXTRA_SKIPPED"; fi
