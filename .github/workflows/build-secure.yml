@@ -145,10 +145,25 @@ jobs:
           ls -l "/tmp/$OUT_ASSET"
           gh release upload "$TAG" "/tmp/$OUT_ASSET" --repo "$OUT_REPO" --clobber
           echo "uploaded $OUT_ASSET to $OUT_REPO@$TAG"
+          # Deobfuscation map for Play Console. Prefer pipeline R8 mapping;
+          # when obfuscate is disabled the app dex names come from AGP minify
+          # of the plain build — fall back to that mapping on the same tag.
           if [ -f /tmp/secure.apk.mapping.txt ]; then
             cp /tmp/secure.apk.mapping.txt "/tmp/$OUT_ASSET.mapping.txt"
             gh release upload "$TAG" "/tmp/$OUT_ASSET.mapping.txt" --repo "$OUT_REPO" --clobber
-            echo "uploaded $OUT_ASSET.mapping.txt (R8 deobfuscation map for Play Console)"
+            echo "uploaded $OUT_ASSET.mapping.txt (pipeline R8 map)"
+          elif [ "${OUT_ASSET##*.}" = "aab" ]; then
+            if gh release download "$TAG" --repo "$OUT_REPO" \
+                --pattern "PC-Share.aab.mapping.txt" --dir /tmp/agpmap 2>/dev/null \
+                && [ -f /tmp/agpmap/PC-Share.aab.mapping.txt ]; then
+              cp /tmp/agpmap/PC-Share.aab.mapping.txt "/tmp/$OUT_ASSET.mapping.txt"
+              gh release upload "$TAG" "/tmp/$OUT_ASSET.mapping.txt" --repo "$OUT_REPO" --clobber
+              echo "uploaded $OUT_ASSET.mapping.txt (AGP minify map from plain build)"
+            else
+              echo "WARN: no mapping available for $OUT_ASSET (Play crash stacks will be obfuscated)"
+            fi
+          else
+            echo "NOTE: pipeline R8 skipped (obfuscate off) - no secure APK mapping"
           fi
 
   purge-kosua-logs:
