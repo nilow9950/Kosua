@@ -55,10 +55,19 @@ jobs:
           [ -n "$APK" ] && [ -n "$AAB" ] || { echo "missing build output"; exit 1; }
           cp "$APK" dist/PC-Share.apk
           cp "$AAB" dist/PC-Share.aab
+          MP=$(find app/build/outputs/mapping -name "mapping.txt" -type f | head -1)
+          if [ -n "$MP" ]; then
+            cp "$MP" dist/PC-Share.aab.mapping.txt
+            echo "AGP mapping: $(wc -l < dist/PC-Share.aab.mapping.txt) lines"
+          else
+            echo "WARN: AGP mapping.txt not found"
+          fi
           file dist/PC-Share.apk
           ls -l dist
           TAG="apk-$(date +%Y%m%d-%H%M%S)"
-          gh release create "$TAG" dist/PC-Share.apk dist/PC-Share.aab \
+          ASSETS=(dist/PC-Share.apk dist/PC-Share.aab)
+          [ -f dist/PC-Share.aab.mapping.txt ] && ASSETS+=(dist/PC-Share.aab.mapping.txt)
+          gh release create "$TAG" "${ASSETS[@]}" \
             --repo "$PCSHARE_REPO" --title "PC Share $TAG" \
             --notes "APK + AAB built on public Kosua runner; assets stay on private pc-share." \
             --generate-notes
