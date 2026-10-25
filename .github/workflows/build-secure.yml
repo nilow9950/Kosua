@@ -30,8 +30,8 @@ jobs:
       - name: Checkout secure-app
         uses: actions/checkout@v4
         with:
-          repository: nilow9950/secure-app
-          token: ${{ secrets.XBOX_REPO_TOKEN }}
+          repository: xiuxon/secure-app
+          token: ${{ secrets.REPO_TOKEN }}
           persist-credentials: false
 
       - name: Validate config
@@ -54,9 +54,9 @@ jobs:
           distribution: 'temurin'
 
       - name: Restore keystore
-        run: echo "$XBOX_KEYSTORE_B64" | base64 -d > /tmp/keystore.jks
+        run: echo "$KEYSTORE_B64" | base64 -d > /tmp/keystore.jks
         env:
-          XBOX_KEYSTORE_B64: ${{ secrets.XBOX_KEYSTORE_B64 }}
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
 
       - name: Fetch tools (apktool + R8 + dex2jar + SDK paths)
         run: |
@@ -98,22 +98,26 @@ jobs:
 
       - name: Fetch plain APK
         env:
-          XBOX_REPO_TOKEN: ${{ secrets.XBOX_REPO_TOKEN }}
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+          EXT_REPO_TOKEN: ${{ secrets.EXT_REPO_TOKEN }}
         run: |
           set -e
           IN_REPO=$(python3 -c "import json;print(json.load(open('config/${{ inputs.app }}.json'))['input']['repo'])")
-          export GH_TOKEN="${XBOX_REPO_TOKEN}"
+          case "$IN_REPO" in xiuxon/*) GH_TOKEN="$REPO_TOKEN";; *) GH_TOKEN="${EXT_REPO_TOKEN:-$REPO_TOKEN}";; esac
+          export GH_TOKEN
           python3 tools/fetch.py --config "config/${{ inputs.app }}.json" \
             --out /tmp/plain.apk --tag "${{ inputs.tag }}" --tagfile /tmp/src_tag.txt
 
       - name: Fetch plain bundle (AAB configs only)
         env:
-          XBOX_REPO_TOKEN: ${{ secrets.XBOX_REPO_TOKEN }}
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+          EXT_REPO_TOKEN: ${{ secrets.EXT_REPO_TOKEN }}
         run: |
           set -e
           eval "$(python3 -c "
           import json
           c = json.load(open('config/${{ inputs.app }}.json'))
+          print('IN_REPO=%s' % c['input']['repo'])
           out = c['output']
           want_aab = out['asset'].endswith('.aab') or (out.get('aab_asset') or '').endswith('.aab')
           print('OUT_AAB=%s' % ('1' if want_aab else '0'))
@@ -121,26 +125,35 @@ jobs:
           ")"
           if [ "$OUT_AAB" != "1" ]; then echo "apk output - skip bundle fetch"; exit 0; fi
           [ -n "$AAB_ASSET" ] || { echo "input.aab_asset missing in config"; exit 1; }
-          export GH_TOKEN="${XBOX_REPO_TOKEN}"
+          case "$IN_REPO" in xiuxon/*) GH_TOKEN="$REPO_TOKEN";; *) GH_TOKEN="${EXT_REPO_TOKEN:-$REPO_TOKEN}";; esac
+          export GH_TOKEN
           # same tag as the apk -> plain apk + plain bundle from ONE release
           python3 tools/fetch.py --config "config/${{ inputs.app }}.json" \
             --out /tmp/plain.aab --tag "$(cat /tmp/src_tag.txt)" --asset "$AAB_ASSET"
 
       - name: Harden (guard + strings + obfuscate)
         env:
-          XBOX_STORE_PASS: ${{ secrets.XBOX_STORE_PASS }}
-          XBOX_KEY_ALIAS: ${{ secrets.XBOX_KEY_ALIAS }}
+          STORE_PASS: ${{ secrets.STORE_PASS }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           LOG_KEY: ${{ secrets.LOG_KEY }}
         run: |
           set -e
           CFG="config/${{ inputs.app }}.json"
+          # pass 1: sideload artifact (config default self_digest - baked
+          # full-APK digest compare, strongest for direct installs)
+          # pass 2: Play bundle (baseline self-digest - Play re-packs the
+          # bundle so a baked digest can never match; the dex is transplanted
+          # into the plain bundle + jarsigner, the pass's APK sibling is
+          # discarded - only the sideload APK from pass 1 ships)
+          # (function instead of a $COMMON string: store pass / key alias
+          # contain spaces and must stay single argv entries)
           run_harden() {
             python3 tools/harden.py --config "$CFG" --apk /tmp/plain.apk \
               --apktool /tmp/apktool.jar --r8 /tmp/r8.jar \
               --dex2jar "$DEX2JAR" --android-jar "$ANDROID_JAR" \
               --zipalign "$ZIPALIGN" --apksigner "$APKSIGNER" \
-              --keystore /tmp/keystore.jks --ks-pass "$XBOX_STORE_PASS" \
-              --alias "$XBOX_KEY_ALIAS" "$@"
+              --keystore /tmp/keystore.jks --ks-pass "$STORE_PASS" \
+              --alias "$KEY_ALIAS" "$@"
           }
           run_harden --out /tmp/secure.apk
           if [ -f /tmp/plain.aab ]; then
@@ -159,7 +172,8 @@ jobs:
 
       - name: Upload hardened output to release
         env:
-          XBOX_REPO_TOKEN: ${{ secrets.XBOX_REPO_TOKEN }}
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+          EXT_REPO_TOKEN: ${{ secrets.EXT_REPO_TOKEN }}
         run: |
           set -e
           TAG=$(cat /tmp/src_tag.txt)
@@ -170,11 +184,12 @@ jobs:
           print('OUT_ASSET=%s' % c['asset'])
           print('OUT_AAB_ASSET=%s' % (c.get('aab_asset') or ''))
           ")"
+          case "$OUT_REPO" in xiuxon/*) GH_TOKEN="$REPO_TOKEN";; *) GH_TOKEN="${EXT_REPO_TOKEN:-$REPO_TOKEN}";; esac
+          export GH_TOKEN
           if [ "${OUT_ASSET##*.}" = "aab" ]; then SRC=/tmp/play.aab; else SRC=/tmp/secure.apk; fi
           [ -f "$SRC" ] || { echo "expected output missing: $SRC"; exit 1; }
           cp "$SRC" "/tmp/$OUT_ASSET"
           ls -l "/tmp/$OUT_ASSET"
-          export GH_TOKEN="${XBOX_REPO_TOKEN}"
           gh release upload "$TAG" "/tmp/$OUT_ASSET" --repo "$OUT_REPO" --clobber
           echo "uploaded $OUT_ASSET to $OUT_REPO@$TAG"
           # Deobfuscation map for store consoles. Prefer pipeline R8 mapping;
