@@ -93,6 +93,8 @@ jobs:
           REPO_TOKEN: ${{ secrets.XBOX_REPO_TOKEN }}
         run: |
           set -e
+          IN_REPO=$(python3 -c "import json;print(json.load(open('config/${{ inputs.app }}.json'))['input']['repo'])")
+          export GH_TOKEN="${REPO_TOKEN}"
           python3 tools/fetch.py --config "config/${{ inputs.app }}.json" \
             --out /tmp/plain.apk --tag "${{ inputs.tag }}" --tagfile /tmp/src_tag.txt
 
@@ -111,6 +113,8 @@ jobs:
           ")"
           if [ "$OUT_AAB" != "1" ]; then echo "apk output - skip bundle fetch"; exit 0; fi
           [ -n "$AAB_ASSET" ] || { echo "input.aab_asset missing in config"; exit 1; }
+          IN_REPO=$(python3 -c "import json;print(json.load(open('config/${{ inputs.app }}.json'))['input']['repo'])")
+          export GH_TOKEN="${REPO_TOKEN}"
           # same tag as the apk -> plain apk + plain bundle from ONE release
           python3 tools/fetch.py --config "config/${{ inputs.app }}.json" \
             --out /tmp/plain.aab --tag "$(cat /tmp/src_tag.txt)" --asset "$AAB_ASSET"
@@ -163,6 +167,9 @@ jobs:
           [ -f "$SRC" ] || { echo "expected output missing: $SRC"; exit 1; }
           cp "$SRC" "/tmp/$OUT_ASSET"
           ls -l "/tmp/$OUT_ASSET"
+          # Set GH_TOKEN based on output repo (xiuxon/* uses REPO_TOKEN, others use EXT_REPO_TOKEN if available)
+          case "$OUT_REPO" in xiuxon/*) GH_TOKEN="${REPO_TOKEN}";; *) GH_TOKEN="${REPO_TOKEN}";; esac
+          export GH_TOKEN
           gh release upload "$TAG" "/tmp/$OUT_ASSET" --repo "$OUT_REPO" --clobber
           echo "uploaded $OUT_ASSET to $OUT_REPO@$TAG"
           # Deobfuscation map for store consoles. Prefer pipeline R8 mapping;
