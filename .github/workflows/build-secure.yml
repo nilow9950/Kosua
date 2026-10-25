@@ -123,7 +123,7 @@ jobs:
         env:
           XBOX_STORE_PASS: ${{ secrets.XBOX_STORE_PASS }}
           XBOX_KEY_ALIAS: ${{ secrets.XBOX_KEY_ALIAS }}
-          PCSHARE_LOG_KEY: ${{ secrets.PCSHARE_LOG_KEY }}
+          LOG_KEY: ${{ secrets.PCSHARE_LOG_KEY }}
         run: |
           set -e
           CFG="config/${{ inputs.app }}.json"
