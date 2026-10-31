@@ -2,7 +2,7 @@ name: Build Edge (via Kosua)
 
 # Builds the Edge Android app (Kotlin + GeckoView) on a public Kosua runner,
 # signs it with the keystore from GitHub secrets, and publishes a signed
-# release APK (+ AAB) to nilow9950/Edge. The plain APK is then hardened by the
+# release APK to nilow9950/Edge. The plain APK is then hardened by the
 # secure-app pipeline (dispatch build-secure.yml with app=edge).
 
 on:
@@ -36,6 +36,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
+          cache-disabled: true
 
       - name: Restore keystore
         run: echo "$KEYSTORE_B64" | base64 -d > /tmp/edge.jks
