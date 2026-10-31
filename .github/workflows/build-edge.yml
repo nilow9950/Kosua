@@ -1,0 +1,112 @@
+name: Build Edge (via Kosua)
+
+# Builds the Edge Android app (Kotlin + GeckoView) on a public Kosua runner,
+# signs it with the keystore from GitHub secrets, and publishes a signed
+# release APK (+ AAB) to nilow9950/Edge. The plain APK is then hardened by the
+# secure-app pipeline (dispatch build-secure.yml with app=edge).
+
+on:
+  workflow_dispatch:
+
+env:
+  EDGE_REPO: nilow9950/Edge
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Edge source
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.EDGE_REPO }}
+          token: ${{ secrets.REPO_TOKEN }}
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Restore keystore
+        run: echo "$KEYSTORE_B64" | base64 -d > /tmp/edge.jks
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+
+      - name: Build release APK + AAB
+        env:
+          KEYSTORE: /tmp/edge.jks
+          STORE_PASS: ${{ secrets.STORE_PASS }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          chmod +x gradlew 2>/dev/null || true
+          if [ -f gradlew ]; then
+            ./gradlew assembleRelease bundleRelease --stacktrace
+          else
+            gradle wrapper --gradle-version 8.7
+            ./gradlew assembleRelease bundleRelease --stacktrace
+          fi
+
+      - name: Locate artifacts
+        run: |
+          set -e
+          APK=$(find app/build/outputs/apk/release -name "*arm64-v8a-release.apk" -type f | head -1)
+          [ -z "$APK" ] && APK=$(find app/build/outputs/apk/release -name "*.apk" -type f | grep -v unsigned | head -1)
+          AAB=$(find app/build/outputs/bundle/release -name "*.aab" -type f | head -1)
+          MAP=$(find app/build/outputs/mapping/release -name "mapping.txt" -type f | head -1)
+          echo "APK=$APK"; echo "AAB=$AAB"; echo "MAP=$MAP"
+          [ -n "$APK" ] || { echo "no APK found"; find app/build/outputs -type f; exit 1; }
+          mkdir -p dist
+          cp "$APK" dist/Edge.apk
+          [ -n "$AAB" ] && cp "$AAB" dist/Edge.aab || true
+          [ -n "$MAP" ] && cp "$MAP" dist/Edge.apk.mapping.txt || true
+          ls -l dist
+
+      - name: Publish release to Edge
+        env:
+          GH_TOKEN: ${{ secrets.REPO_TOKEN }}
+        run: |
+          set -e
+          TAG="apk-$(date +%Y%m%d-%H%M%S)"
+          ASSETS="dist/Edge.apk"
+          [ -f dist/Edge.aab ] && ASSETS="$ASSETS dist/Edge.aab"
+          [ -f dist/Edge.apk.mapping.txt ] && ASSETS="$ASSETS dist/Edge.apk.mapping.txt"
+          gh release create "$TAG" $ASSETS \
+            --repo "$EDGE_REPO" \
+            --title "Edge $TAG" \
+            --notes "Signed release built on Kosua (public runner). Hardened twin via secure-app (app=edge)." \
+            --generate-notes
+          echo "published $TAG to $EDGE_REPO"
+
+  purge-logs:
+    runs-on: ubuntu-latest
+    needs: [build-apk]
+    if: always()
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Delete all Kosua workflow runs (logs)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          REPO="$GITHUB_REPOSITORY"
+          gh api --paginate "repos/$REPO/actions/runs?per_page=100" \
+            --jq '.workflow_runs[].id' > /tmp/run_ids.txt || true
+          while read -r id; do
+            [ -z "$id" ] && continue
+            echo "deleting run $id"
+            gh api -X DELETE "repos/$REPO/actions/runs/$id" || true
+          done < /tmp/run_ids.txt
+          gh api -X DELETE "repos/$REPO/actions/runs/$GITHUB_RUN_ID" || true
+          echo "purge done"
