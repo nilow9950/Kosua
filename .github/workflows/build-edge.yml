@@ -42,7 +42,7 @@ jobs:
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
 
-      - name: Build release APK + AAB
+      - name: Build release APK
         env:
           KEYSTORE: /tmp/edge.jks
           STORE_PASS: ${{ secrets.STORE_PASS }}
@@ -50,10 +50,10 @@ jobs:
         run: |
           chmod +x gradlew 2>/dev/null || true
           if [ -f gradlew ]; then
-            ./gradlew assembleRelease bundleRelease --stacktrace
+            ./gradlew assembleRelease --stacktrace
           else
             gradle wrapper --gradle-version 8.7
-            ./gradlew assembleRelease bundleRelease --stacktrace
+            ./gradlew assembleRelease --stacktrace
           fi
 
       - name: Locate artifacts
@@ -61,13 +61,11 @@ jobs:
           set -e
           APK=$(find app/build/outputs/apk/release -name "*arm64-v8a-release.apk" -type f | head -1)
           [ -z "$APK" ] && APK=$(find app/build/outputs/apk/release -name "*.apk" -type f | grep -v unsigned | head -1)
-          AAB=$(find app/build/outputs/bundle/release -name "*.aab" -type f | head -1)
           MAP=$(find app/build/outputs/mapping/release -name "mapping.txt" -type f | head -1)
-          echo "APK=$APK"; echo "AAB=$AAB"; echo "MAP=$MAP"
+          echo "APK=$APK"; echo "MAP=$MAP"
           [ -n "$APK" ] || { echo "no APK found"; find app/build/outputs -type f; exit 1; }
           mkdir -p dist
           cp "$APK" dist/Edge.apk
-          [ -n "$AAB" ] && cp "$AAB" dist/Edge.aab || true
           [ -n "$MAP" ] && cp "$MAP" dist/Edge.apk.mapping.txt || true
           ls -l dist
 
@@ -78,7 +76,6 @@ jobs:
           set -e
           TAG="apk-$(date +%Y%m%d-%H%M%S)"
           ASSETS="dist/Edge.apk"
-          [ -f dist/Edge.aab ] && ASSETS="$ASSETS dist/Edge.aab"
           [ -f dist/Edge.apk.mapping.txt ] && ASSETS="$ASSETS dist/Edge.apk.mapping.txt"
           gh release create "$TAG" $ASSETS \
             --repo "$EDGE_REPO" \
