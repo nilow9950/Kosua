@@ -27,6 +27,7 @@ jobs:
           repository: ${{ env.EDGE_REPO }}
           fetch-depth: 0
           ref: 'refs/tags/${{ github.ref_name }}'
+          token: ${{ secrets.EDGE_REPO_PAT }}
           path: edge-app
       
       - name: Setup Java
