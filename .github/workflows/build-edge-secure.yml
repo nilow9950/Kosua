@@ -1,0 +1,123 @@
+name: Build and Release Secure Edge
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.6.7)'
+        required: true
+        default: 'v1.6.7'
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  secure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout secure-app
+        uses: actions/checkout@v4
+        with:
+          repository: nilow9950/secure-app
+          token: ${{ secrets.REPO_TOKEN }}
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Restore keystore
+        run: echo "$KEYSTORE_B64" | base64 -d > /tmp/keystore.jks
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+
+      - name: Fetch tools
+        run: |
+          set -e
+          curl -sL -o /tmp/apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.10.0/apktool_2.10.0.jar
+          curl -sL -o /tmp/r8.jar https://dl.google.com/dl/android/maven2/com/android/tools/r8/8.3.37/r8-8.3.37.jar
+          curl -sL -o /tmp/dex-tools.zip https://github.com/pxb1988/dex2jar/releases/download/v2.4/dex-tools-v2.4.zip
+          unzip -q /tmp/dex-tools.zip -d /tmp/d2j
+          chmod +x /tmp/d2j/dex-tools-v2.4/d2j-dex2jar.sh
+          AJ=$(ls "$ANDROID_HOME"/platforms/android-*/android.jar | sort -V | tail -1)
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+          echo "ANDROID_JAR=$AJ" >> "$GITHUB_ENV"
+          echo "APKSIGNER=${BT}apksigner" >> "$GITHUB_ENV"
+          echo "ZIPALIGN=${BT}zipalign" >> "$GITHUB_ENV"
+          echo "DEX2JAR=/tmp/d2j/dex-tools-v2.4/d2j-dex2jar.sh" >> "$GITHUB_ENV"
+
+      - name: Fetch plain APK from Edge repo
+        env:
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+          EXT_REPO_TOKEN: ${{ secrets.EXT_REPO_TOKEN }}
+        run: |
+          set -e
+          export GH_TOKEN="${EXT_REPO_TOKEN:-$REPO_TOKEN}"
+          python3 tools/fetch.py --config "config/edge.json" \
+            --out /tmp/plain.apk --tag "${{ inputs.version }}" --tagfile /tmp/src_tag.txt
+
+      - name: Harden APK with secure-app pipeline
+        env:
+          STORE_PASS: ${{ secrets.STORE_PASS }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          set -e
+          python3 tools/harden.py --config "config/edge.json" --apk /tmp/plain.apk \
+            --apktool /tmp/apktool.jar --r8 /tmp/r8.jar \
+            --dex2jar "$DEX2JAR" --android-jar "$ANDROID_JAR" \
+            --zipalign "$ZIPALIGN" --apksigner "$APKSIGNER" \
+            --keystore /tmp/keystore.jks --ks-pass "$STORE_PASS" \
+            --alias "$KEY_ALIAS" --out /tmp/secure.apk
+
+      - name: Verify hardened APK
+        run: |
+          python3 tools/verify.py --apk /tmp/secure.apk \
+            --config "config/edge.json"
+
+      - name: Create new release tag
+        run: |
+          set -e
+          echo "Creating release tag: ${{ inputs.version }}"
+          NEW_SHA=$(git rev-parse HEAD)
+          git tag -f "${{ inputs.version }}" "$NEW_SHA"
+          git push --force --tags "${{ inputs.version }}"
+
+      - name: Upload secured APK to new release
+        env:
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+          EXT_REPO_TOKEN: ${{ secrets.EXT_REPO_TOKEN }}
+        run: |
+          set -e
+          export GH_TOKEN="${EXT_REPO_TOKEN:-$REPO_TOKEN}"
+          gh release upload "${{ inputs.version }}" "/tmp/secure.apk" --repo nilow9950/Edge --clobber
+          echo "uploaded Edge-secure.apk to nilow9950/Edge@${{ inputs.version }}"
+
+      - name: Create release notes
+        run: |
+          set -e
+          export GH_TOKEN="${EXT_REPO_TOKEN:-$REPO_TOKEN}"
+          gh release edit "${{ inputs.version }}" --repo nilow9950/Edge \
+            --title "Edge v${{ inputs.version }} - Security Update" \
+            --notes "---
+## 🔐 Edge v${{ inputs.version }} - Security Update
+
+### New Security Features
+- ✅ **Integrity Checking** - Detects root, Lucky Patcher, APK tampering
+- ✅ **Guard Protection** - Debugger detection, Frida blocking, trace detection
+- ✅ **String Encryption** - All sensitive strings encrypted at runtime
+- ✅ **Crash Logging** - Private crash reports in cache directory
+- ✅ **Component Protection** - Blocks component disabling
+- ✅ **Permission Monitoring** - Detects permission revocation
+- ✅ **Encrypted Storage** - All sensitive data encrypted with AES-256-GCM
+
+### Technical Details
+- Version Code: 17
+- Min SDK: 26 (Android 8.0)
+- Target SDK: 34 (Android 14)
+
+### Security Pipeline
+Built with [secure-app](https://github.com/nilow9950/secure-app) pipeline
+"
