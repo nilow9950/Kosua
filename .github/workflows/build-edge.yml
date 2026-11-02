@@ -29,15 +29,17 @@ jobs:
           token: ${{ secrets.EDGE_REPO_PAT }}
           path: edge-app
       
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-      
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
       
       - name: Generate Gradle Wrapper
         run: |
