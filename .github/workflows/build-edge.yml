@@ -12,7 +12,7 @@ on:
         default: 'v1.6.0'
 
 env:
-  GRADLE_VERSION: '8.5'
+  GRADLE_VERSION: '8.7'
   ANDROID_SDK_VERSION: '34.0.0'
   EDGE_REPO: 'nilow9950/Edge'
 
@@ -45,7 +45,7 @@ jobs:
         run: |
           echo "Generating gradle wrapper..."
           cd edge-app
-          gradle wrapper --gradle-version 8.5
+          gradle wrapper --gradle-version 8.7
       
       - name: Build release APK
         run: |
