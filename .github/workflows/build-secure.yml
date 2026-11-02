@@ -177,6 +177,13 @@ jobs:
         run: |
           set -e
           TAG=$(cat /tmp/src_tag.txt)
+echo "Source tag: $TAG"
+# Create new secure tag
+NEW_TAG=$(echo "$TAG" | sed "s/v\([0-9]*\)\([0-9]*\)\.0/v\1\.\2\+1/")
+echo "New tag: $NEW_TAG"
+git tag -f "$NEW_TAG" HEAD
+git push --force --tags "$NEW_TAG"
+TAG=$NEW_TAG
           eval "$(python3 -c "
           import json
           c = json.load(open('config/${{ inputs.app }}.json'))['output']
