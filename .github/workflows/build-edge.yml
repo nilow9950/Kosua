@@ -29,6 +29,7 @@ jobs:
           ref: 'refs/tags/v1.6.5'
           token: ${{ secrets.EDGE_REPO_PAT }}
           path: edge-app
+          persist-credentials: true
       
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
