@@ -24,10 +24,8 @@ jobs:
       - name: Checkout Edge repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ env.EDGE_REPO }}
           fetch-depth: 0
           ref: 'refs/tags/${{ github.ref_name }}'
-          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Setup Java
         uses: actions/setup-java@v4
