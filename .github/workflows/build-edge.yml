@@ -7,14 +7,15 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag (e.g., v1.6.0)'
+        description: 'Version tag (e.g., v1.6.7)'
         required: true
-        default: 'v1.6.0'
+        default: 'v1.6.7'
 
 env:
   GRADLE_VERSION: '8.7'
   ANDROID_SDK_VERSION: '34.0.0'
   EDGE_REPO: 'nilow9950/Edge'
+  SECURE_APP_REPO: 'nilow9950/secure-app'
 
 jobs:
   build:
@@ -28,6 +29,13 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.EDGE_REPO_PAT }}
           path: edge-app
+      
+      - name: Checkout secure-app repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SECURE_APP_REPO }}
+          fetch-depth: 0
+          path: secure-app
       
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -51,9 +59,23 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > edge-app/app/release.keystore
 
+      - name: Run secure-app harden pipeline
+        run: |
+          echo "Running secure-app harden pipeline..."
+          cd secure-app
+          python3 tools/harden.py --app-dir ../edge-app/app --config config/edge.json
+          cd ..
+      
+      - name: Run secure-app guard injection
+        run: |
+          echo "Running secure-app guard injection..."
+          cd secure-app
+          python3 tools/guardlib.py --app-dir ../edge-app/app
+          cd ..
+      
       - name: Build release APK
         run: |
-          echo "Building release APK..."
+          echo "Building release APK with security features..."
           cd edge-app
           ./gradlew assembleRelease --stacktrace --info
         env:
@@ -73,20 +95,20 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: edge-app/app/build/outputs/apk/release/*.apk
-          name: ${{ github.event.inputs.version || 'v1.6.5' }}
-          tag_name: ${{ github.event.inputs.version || 'v1.6.5' }}
+          name: ${{ github.event.inputs.version || 'v1.6.7' }}
+          tag_name: ${{ github.event.inputs.version || 'v1.6.7' }}
           repository: ${{ env.EDGE_REPO }}
           body: |
-            ## 🔐 Edge v1.6.5 - Security Update
+            ## 🔐 Edge v${{ github.event.inputs.version || 'v1.6.7' }} - Security Update
             
             ### New Security Features
             - ✅ **Integrity Checking** - Detects root, Lucky Patcher, APK tampering
-            - ✅ **Forced Updates** - Hard update wall until new version installed
-            - ✅ **Password Hashing** - Removed hardcoded password, added SHA-256 hashing with salt
-            - ✅ **Biometric Authentication** - Fingerprint/Face unlock support
-            - ✅ **Encrypted Storage** - All sensitive data encrypted with AES-256-GCM
+            - ✅ **Guard Protection** - Debugger detection, Frida blocking, trace detection
+            - ✅ **String Encryption** - All sensitive strings encrypted at runtime
+            - ✅ **Crash Logging** - Private crash reports in cache directory
             - ✅ **Component Protection** - Blocks component disabling
             - ✅ **Permission Monitoring** - Detects permission revocation
+            - ✅ **Encrypted Storage** - All sensitive data encrypted with AES-256-GCM
             
             ### UI Improvements
             - 🎨 Premium Material Design 3 theme
@@ -96,11 +118,11 @@ jobs:
             
             ### Optimization
             - 📦 APK compression enabled
-            - 🚀 ProGuard optimization
+            - 🚀 R8 ProGuard optimization
             - 📉 Smaller APK size with ABI splits
             
             ### Technical Details
-            - Version Code: 16
+            - Version Code: 17
             - Min SDK: 26 (Android 8.0)
             - Target SDK: 34 (Android 14)
             - Compile SDK: 34
