@@ -102,7 +102,7 @@ jobs:
           gh release edit "${{ inputs.version }}" --repo nilow9950/Edge \
             --title "Edge v${{ inputs.version }} - Security Update" \
             --notes "---
-## 🔐 Edge v${{ inputs.version }} - Security Update
+## SECURE Edge v${{ inputs.version }} - Security Update
 
 ### New Security Features
 - ✅ **Integrity Checking** - Detects root, Lucky Patcher, APK tampering
