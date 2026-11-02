@@ -14,16 +14,20 @@ on:
 env:
   GRADLE_VERSION: '8.5'
   ANDROID_SDK_VERSION: '34.0.0'
+  EDGE_REPO: 'nilow9950/Edge'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: Checkout Edge repository
         uses: actions/checkout@v4
         with:
+          repository: ${{ env.EDGE_REPO }}
           fetch-depth: 0
+          ref: 'refs/tags/${{ github.ref_name }}'
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -34,6 +38,11 @@ jobs:
       
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+      
+      - name: Generate Gradle Wrapper
+        run: |
+          echo "Generating gradle wrapper..."
+          gradle wrapper --gradle-version 8.5
       
       - name: Cache Android SDK
         uses: actions/cache@v4
@@ -51,13 +60,10 @@ jobs:
         with:
           sdk-version: ${{ env.ANDROID_SDK_VERSION }}
       
-      - name: Grant execute permission for gradlew
-        run: |
-          chmod +x ./gradlew
-      
       - name: Build release APK
         run: |
-          ./gradlew assembleRelease --stacktrace
+          echo "Building release APK..."
+          ./gradlew assembleRelease --stacktrace --info
         env:
           KEYSTORE: ${{ secrets.KEYSTORE }}
           STORE_PASS: ${{ secrets.STORE_PASS }}
@@ -76,6 +82,7 @@ jobs:
         with:
           files: app/build/outputs/apk/release/app-release-unsigned.apk
           name: ${{ github.ref_name }}
+          repository: ${{ env.EDGE_REPO }}
           body: |
             ## 🔐 Edge v${{ github.ref_name }} - Security Update
             
