@@ -57,7 +57,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          sdk-version: ${{ env.ANDROID_SDK_VERSION }}
+          cmdline-tools-version: 11076627
       
       - name: Build release APK
         run: |
