@@ -24,8 +24,10 @@ jobs:
       - name: Checkout Edge repository
         uses: actions/checkout@v4
         with:
+          repository: ${{ env.EDGE_REPO }}
           fetch-depth: 0
           ref: 'refs/tags/${{ github.ref_name }}'
+          path: edge-app
       
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -34,12 +36,10 @@ jobs:
           distribution: 'temurin'
           cache: gradle
       
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-      
       - name: Generate Gradle Wrapper
         run: |
           echo "Generating gradle wrapper..."
+          cd edge-app
           gradle wrapper --gradle-version 8.5
       
       - name: Cache Android SDK
@@ -49,7 +49,7 @@ jobs:
           path: |
             ~/.android
             ${{ github.workspace }}/android-sdk
-          key: android-sdk-${{ hashFiles('**/build.gradle.kts') }}
+          key: android-sdk-${{ hashFiles('edge-app/**/build.gradle.kts') }}
           restore-keys: |
             android-sdk-
       
@@ -61,6 +61,7 @@ jobs:
       - name: Build release APK
         run: |
           echo "Building release APK..."
+          cd edge-app
           ./gradlew assembleRelease --stacktrace --info
         env:
           KEYSTORE: ${{ secrets.KEYSTORE }}
@@ -71,14 +72,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: edge-release-apk
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          path: edge-app/app/build/outputs/apk/release/app-release-unsigned.apk
           retention-days: 30
       
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
-          files: app/build/outputs/apk/release/app-release-unsigned.apk
+          files: edge-app/app/build/outputs/apk/release/app-release-unsigned.apk
           name: ${{ github.ref_name }}
           repository: ${{ env.EDGE_REPO }}
           body: |
