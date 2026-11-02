@@ -37,6 +37,18 @@ jobs:
           fetch-depth: 0
           path: secure-app
       
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install secure-app dependencies
+        run: |
+          cd secure-app
+          pip install -r requirements.txt -q
+          pip install requests pyyaml -q
+          ls -la tools/
+      
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
