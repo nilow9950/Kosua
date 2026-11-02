@@ -30,6 +30,9 @@ jobs:
           token: ${{ secrets.EDGE_REPO_PAT }}
           path: edge-app
       
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -42,20 +45,6 @@ jobs:
           echo "Generating gradle wrapper..."
           cd edge-app
           gradle wrapper --gradle-version 8.5
-      
-      - name: Cache Android SDK
-        uses: actions/cache@v4
-        id: cache-sdk
-        with:
-          path: |
-            ~/.android
-            ${{ github.workspace }}/android-sdk
-          key: android-sdk-${{ hashFiles('edge-app/**/build.gradle.kts') }}
-          restore-keys: |
-            android-sdk-
-      
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
       
       - name: Build release APK
         run: |
