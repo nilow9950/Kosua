@@ -21,6 +21,13 @@ jobs:
   secure:
     runs-on: ubuntu-latest
     steps:
+      - name: Debug Token Access
+        env:
+          SECURE_APP_TOKEN: ${{ secrets.SECURE_APP_TOKEN }}
+        run: |
+          echo "Token length: $(echo -n "$SECURE_APP_TOKEN" | wc -c)"
+          curl -s -H "Authorization: token $SECURE_APP_TOKEN" https://api.github.com/repos/nilow9950/secure-app | head -20
+
       - name: Checkout secure-app
         uses: actions/checkout@v4
         with:
