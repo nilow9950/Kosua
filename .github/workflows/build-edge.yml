@@ -78,7 +78,11 @@ jobs:
         run: |
           echo "Running secure-app harden pipeline..."
           cd secure-app
-          python3 tools/harden.py --app-dir ../edge-app/app --config config/edge.json
+          set -x
+          python3 tools/harden.py --app-dir ../edge-app/app --config config/edge.json 2>&1 || {
+            echo "ERROR: harden.py failed"
+            exit 1
+          }
           cd ..
       
       - name: Run secure-app guard injection
