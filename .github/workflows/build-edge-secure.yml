@@ -2,16 +2,16 @@ name: Build and Release Secure Edge
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - build-edge.yml
-    types:
-      - completed
     inputs:
       version:
         description: 'Version tag (e.g., v1.6.7)'
         required: true
         default: 'v1.6.7'
+  workflow_run:
+    workflows:
+      - build-edge.yml
+    types:
+      - completed
 
 permissions:
   contents: read
