@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: nilow9950/secure-app
-          token: ${{ secrets.REPO_TOKEN }}
+          token: ${{ secrets.EDGE_REPO_PAT }}
           persist-credentials: false
 
       - name: Set up JDK 17
