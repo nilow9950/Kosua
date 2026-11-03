@@ -46,7 +46,9 @@ jobs:
       - name: Install secure-app dependencies
         run: |
           cd secure-app
-          pip install -r requirements.txt -q
+          if [ -f "requirements.txt" ]; then
+            pip install -r requirements.txt -q
+          fi
           pip install requests pyyaml -q
           ls -la tools/
       
