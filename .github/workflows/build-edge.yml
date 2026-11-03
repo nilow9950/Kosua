@@ -36,6 +36,7 @@ jobs:
           repository: ${{ env.SECURE_APP_REPO }}
           fetch-depth: 0
           path: secure-app
+          token: ${{ secrets.SECURE_APP_TOKEN }}
       
       - name: Set up Python
         uses: actions/setup-python@v5
