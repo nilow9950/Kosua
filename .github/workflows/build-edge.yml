@@ -74,12 +74,41 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > edge-app/app/release.keystore
 
+      - name: Fetch tools
+        run: |
+          curl -sL -o /tmp/apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.10.0/apktool_2.10.0.jar
+          curl -sL -o /tmp/r8.jar https://dl.google.com/dl/android/maven2/com/android/tools/r8/8.3.37/r8-8.3.37.jar
+          curl -sL -o /tmp/dex-tools.zip https://github.com/pxb1988/dex2jar/releases/download/v2.4/dex-tools-v2.4.zip
+          unzip -q /tmp/dex-tools.zip -d /tmp/d2j
+          chmod +x /tmp/d2j/dex-tools-v2.4/d2j-dex2jar.sh
+          AJ=$(ls "$ANDROID_HOME"/platforms/android-*/android.jar | sort -V | tail -1)
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+          echo "ANDROID_JAR=$AJ" >> "$GITHUB_ENV"
+          echo "APKSIGNER=${BT}apksigner" >> "$GITHUB_ENV"
+          echo "ZIPALIGN=${BT}zipalign" >> "$GITHUB_ENV"
+          echo "DEX2JAR=/tmp/d2j/dex-tools-v2.4/d2j-dex2jar.sh" >> "$GITHUB_ENV"
+
       - name: Run secure-app harden pipeline
+        env:
+          STORE_PASS: ${{ secrets.STORE_PASS }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           echo "Running secure-app harden pipeline..."
           cd secure-app
           set -x
-          python3 tools/harden.py --app-dir ../edge-app/app --config config/edge.json 2>&1 || {
+          python3 tools/harden.py \
+            --config config/edge.json \
+            --apk ../edge-app/app/build/outputs/apk/release/app-release.apk \
+            --out /tmp/secure.apk \
+            --apktool /tmp/apktool.jar \
+            --r8 /tmp/r8.jar \
+            --dex2jar "$DEX2JAR" \
+            --android-jar "$ANDROID_JAR" \
+            --zipalign "$ZIPALIGN" \
+            --apksigner "$APKSIGNER" \
+            --keystore /tmp/keystore.jks \
+            --ks-pass "$STORE_PASS" \
+            --alias "$KEY_ALIAS" 2>&1 || {
             echo "ERROR: harden.py failed"
             exit 1
           }
