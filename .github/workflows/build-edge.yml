@@ -107,7 +107,7 @@ jobs:
             --android-jar "$ANDROID_JAR" \
             --zipalign "$ZIPALIGN" \
             --apksigner "$APKSIGNER" \
-            --keystore /tmp/keystore.jks \
+            --keystore ../edge-app/app/release.keystore \
             --ks-pass "$STORE_PASS" \
             --alias "$KEY_ALIAS" 2>&1 || {
             echo "ERROR: harden.py failed"
