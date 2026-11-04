@@ -119,7 +119,7 @@ jobs:
           cd secure-app
           set -x
           python3 tools/harden.py \
-            --config config/edge.json \
+            --config ../config/debug-edge.json \
             --apk $(find ../edge-app/app/build/outputs/apk/release -name '*.apk' | head -1) \
             --out /tmp/secure.apk \
             --apktool /tmp/apktool.jar \
