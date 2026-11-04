@@ -1,0 +1,104 @@
+{
+    "app": "edge",
+    "package": "xiu.edge.pro",
+    "min_api": 26,
+    "signer_name": "edge",
+    "input": {
+        "repo": "nilow9950/Edge",
+        "tag": "",
+        "asset": "Edge.apk"
+    },
+    "output": {
+        "repo": "nilow9950/Edge",
+        "tag": "",
+        "asset": "Edge-secure.apk"
+    },
+    "guard": {
+        "enabled": false,
+        "allowed_certs": [],
+        "call_sites": [
+            {
+                "class": "xiu/edge/pro/MainActivity",
+                "method": "onCreate",
+                "proto": "(Landroid/os/Bundle;)V"
+            },
+            {
+                "class": "xiu/edge/pro/service/BrowserService",
+                "method": "onCreate",
+                "proto": "()V"
+            },
+            {
+                "class": "com/secureapp/guard/App",
+                "method": "attachBaseContext",
+                "proto": "(Landroid/content/Context;)V"
+            }
+        ]
+    },
+    "strings": {
+        "enabled": true,
+        "key": "edge-sa-v1",
+        "exclude": []
+    },
+    "obfuscate": {
+        "enabled": false,
+        "min_api": 26,
+        "extra_keep": [
+            "-keep class xiu.edge.pro.MainActivity { <init>(...); }",
+            "-keep class xiu.edge.pro.service.BrowserService { <init>(...); }"
+        ]
+    },
+    "crash_log": {
+        "enabled": true
+    },
+    "integrity": {
+        "enabled": false,
+        "encrypted_logs": true,
+        "vdex_bind": true,
+        "artifact_die": false,
+        "dex_fingerprint": false,
+        "lp_block": false,
+        "diag": true,
+        "critical_permissions": [
+            {
+                "name": "android.permission.POST_NOTIFICATIONS",
+                "since": 33,
+                "until": 9999
+            }
+        ],
+        "component_check": true,
+        "component_allow_disabled": [],
+        "watchdog_sec": 30,
+        "perm_grace_sec": 2592000
+    },
+    "verify": {
+        "dex_present": [
+            "sa_integ.txt",
+            "/proc/self/maps",
+            "TracerPid",
+            "componentsOk",
+            "startWatchdog",
+            "certOk"
+        ],
+        "dex_absent": [
+            "Search or enter address",
+            "Session is active"
+        ],
+        "renamed_absent": [
+            "Lxiu/edge/pro/core/Security;"
+        ],
+        "dex_keep_present": [
+            "androidx.constraintlayout.widget.ConstraintLayout",
+            "com.google.android.material.card.MaterialCardView",
+            "com.google.android.material.button.MaterialButton",
+            "com.google.android.material.textfield.TextInputLayout",
+            "com.google.android.material.textfield.TextInputEditText",
+            "com.google.android.material.appbar.MaterialToolbar",
+            "androidx.appcompat.widget.SwitchCompat",
+            "androidx.core.app.CoreComponentFactory",
+            "androidx.startup.InitializationProvider",
+            "androidx.emoji2.text.EmojiCompatInitializer",
+            "androidx.profileinstaller.ProfileInstallerInitializer",
+            "com.secureapp.guard.App"
+        ]
+    }
+}
