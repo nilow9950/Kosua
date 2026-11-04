@@ -92,6 +92,7 @@ jobs:
         env:
           STORE_PASS: ${{ secrets.STORE_PASS }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          LOG_KEY: ${{ secrets.LOG_KEY }}
         run: |
           echo "Running secure-app harden pipeline..."
           cd secure-app
