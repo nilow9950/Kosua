@@ -88,6 +88,16 @@ jobs:
           echo "ZIPALIGN=${BT}zipalign" >> "$GITHUB_ENV"
           echo "DEX2JAR=/tmp/d2j/dex-tools-v2.4/d2j-dex2jar.sh" >> "$GITHUB_ENV"
 
+      - name: Build release APK
+        run: |
+          echo "Building release APK with security features..."
+          cd edge-app
+          ./gradlew assembleRelease --stacktrace --info
+        env:
+          KEYSTORE: release.keystore
+          STORE_PASS: ${{ secrets.STORE_PASS }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+
       - name: Run secure-app harden pipeline
         env:
           STORE_PASS: ${{ secrets.STORE_PASS }}
@@ -122,15 +132,7 @@ jobs:
           python3 tools/guardlib.py --app-dir ../edge-app/app
           cd ..
       
-      - name: Build release APK
-        run: |
-          echo "Building release APK with security features..."
-          cd edge-app
-          ./gradlew assembleRelease --stacktrace --info
-        env:
-          KEYSTORE: release.keystore
-          STORE_PASS: ${{ secrets.STORE_PASS }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
