@@ -14,7 +14,7 @@
         "asset": "Edge-secure.apk"
     },
     "guard": {
-        "enabled": false,
+        "enabled": true,
         "allowed_certs": [],
         "call_sites": [
             {
