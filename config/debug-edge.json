@@ -53,7 +53,7 @@
     "integrity": {
         "enabled": true,
         "encrypted_logs": true,
-        "vdex_bind": true,
+        "vdex_bind": false,
         "artifact_die": false,
         "dex_fingerprint": false,
         "lp_block": false,
@@ -65,7 +65,7 @@
                 "until": 9999
             }
         ],
-        "component_check": true,
+        "component_check": false,
         "component_allow_disabled": [],
         "watchdog_sec": 30,
         "perm_grace_sec": 2592000
