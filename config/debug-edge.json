@@ -51,7 +51,7 @@
         "enabled": true
     },
     "integrity": {
-        "enabled": false,
+        "enabled": true,
         "encrypted_logs": true,
         "vdex_bind": true,
         "artifact_die": false,
