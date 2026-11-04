@@ -91,7 +91,9 @@ jobs:
       - name: Update App Version
         run: |
           echo "Updating version to ${{ inputs.version }}"
-          VERSION=${{ inputs.version }}#v
+          # Extract version number (remove 'v' prefix if present)
+          VERSION=${{ inputs.version }}
+          VERSION=${VERSION#v}
           CODE=17
           sed -i "s/versionName = ".*"/versionName = \"$VERSION\"/" edge-app/app/build.gradle.kts
           sed -i "s/versionCode = .*/versionCode = $CODE/" edge-app/app/build.gradle.kts
