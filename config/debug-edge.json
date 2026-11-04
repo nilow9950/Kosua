@@ -52,7 +52,7 @@
     },
     "integrity": {
         "enabled": true,
-        "encrypted_logs": true,
+        "encrypted_logs": false,
         "vdex_bind": false,
         "artifact_die": false,
         "dex_fingerprint": false,
