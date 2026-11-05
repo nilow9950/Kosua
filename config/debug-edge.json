@@ -57,7 +57,7 @@
         "artifact_die": false,
         "dex_fingerprint": false,
         "lp_block": false,
-        "diag": false,
+        "diag": true,
         "critical_permissions": [],
         "component_check": false,
         "component_allow_disabled": [],
