@@ -51,20 +51,14 @@
         "enabled": true
     },
     "integrity": {
-        "enabled": false,
+        "enabled": true,
         "encrypted_logs": false,
         "vdex_bind": false,
         "artifact_die": false,
         "dex_fingerprint": false,
         "lp_block": false,
-        "diag": true,
-        "critical_permissions": [
-            {
-                "name": "android.permission.POST_NOTIFICATIONS",
-                "since": 33,
-                "until": 9999
-            }
-        ],
+        "diag": false,
+        "critical_permissions": [],
         "component_check": false,
         "component_allow_disabled": [],
         "watchdog_sec": 30,
