@@ -54,9 +54,12 @@ jobs:
           distribution: 'temurin'
 
       - name: Restore keystore
-        run: echo "$KEYSTORE_B64" | base64 -d > /tmp/keystore.jks
+        # Play expects the XBOX upload key (SHA1 E2:DD:4A:...), same as plain
+        # build-pcshare.yml. secrets.KEYSTORE_B64 is the Edge keystore and must
+        # not be used here (edge has build-edge-secure.yml).
+        run: echo "$XBOX_KEYSTORE_B64" | base64 -d > /tmp/keystore.jks
         env:
-          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+          XBOX_KEYSTORE_B64: ${{ secrets.XBOX_KEYSTORE_B64 }}
 
       - name: Fetch tools (apktool + R8 + dex2jar + SDK paths)
         run: |
@@ -133,8 +136,8 @@ jobs:
 
       - name: Harden (guard + strings + obfuscate)
         env:
-          STORE_PASS: ${{ secrets.STORE_PASS }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          STORE_PASS: ${{ secrets.XBOX_STORE_PASS }}
+          KEY_ALIAS: ${{ secrets.XBOX_KEY_ALIAS }}
           LOG_KEY: ${{ secrets.LOG_KEY }}
         run: |
           set -e
