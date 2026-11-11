@@ -1,4 +1,4 @@
-name: Build PC Share (via Kosua)
+name: Build PC File Share (via Kosua)
 
 on:
   workflow_dispatch:
@@ -68,7 +68,7 @@ jobs:
           ASSETS=(dist/PC-Share.apk dist/PC-Share.aab)
           [ -f dist/PC-Share.aab.mapping.txt ] && ASSETS+=(dist/PC-Share.aab.mapping.txt)
           gh release create "$TAG" "${ASSETS[@]}" \
-            --repo "$PCSHARE_REPO" --title "PC Share $TAG" \
+            --repo "$PCSHARE_REPO" --title "PC File Share $TAG" \
             --notes "APK + AAB built on public Kosua runner; assets stay on private pc-share." \
             --generate-notes
 
