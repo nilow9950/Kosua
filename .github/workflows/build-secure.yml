@@ -277,3 +277,5 @@ TAG=$NEW_TAG
           done < /tmp/run_ids.txt
           gh api -X DELETE "repos/$REPO/actions/runs/$GITHUB_RUN_ID" || true
           echo "purge done"
+
+# re-register workflow
