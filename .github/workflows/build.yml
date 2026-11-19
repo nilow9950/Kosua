@@ -181,7 +181,7 @@ jobs:
 
   build-apk:
     runs-on: ubuntu-latest
-    needs: [build-jni, build-kpm]
+    needs: [build-jni, build-kpm, build-daemon]
     steps:
       - name: Checkout private Xbox source
         uses: actions/checkout@v4
