@@ -45,7 +45,7 @@ jobs:
               compat_copy_to_user|symbol_lookup_name|kpver) ;;
               # KP baselib / kfunc trampolines (resolved at load by KP)
               lib_strncmp|lib_strcmp|lib_strlen|lib_memcpy|lib_memset|lib_strcpy|lib_strcat|lib_sprintf|lib_snprintf|lib_vsnprintf) ;;
-              kf_snprintf|kf_vsnprintf|kf_printf|kf_kasprintf|kf_scnprintf) ;;
+              kf_snprintf|kf_vsnprintf|kf_printf|kf_kasprintf|kf_scnprintf|kf_strncmp|kf_strcmp|kf_strlen|kf_memcpy|kf_memset|kf_strcpy|kf_strcat|kf_sprintf|kf_vsprintf ;;
               # KP offset / thread-info helpers (resolved at load by KP)
               cred_offset|task_struct_offset|thread_info_in_task|task_in_thread_info_offset|thread_size|sp_el0_is_current|sp_el0_is_thread_info) ;;
               *) echo "ERROR: unexpected undefined symbol: $s"; exit 1 ;;
